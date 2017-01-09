@@ -1,5 +1,8 @@
 package com.example.ankit.technews;
 
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteStatement;
 import android.os.AsyncTask;
 import android.os.StrictMode;
 import android.support.v7.app.AppCompatActivity;
@@ -26,15 +29,22 @@ public class MainActivity extends AppCompatActivity {
     Map<Integer, String> articleURLs = new HashMap<Integer, String>();
     ArrayList<Integer> articleIds = new ArrayList<Integer>();
 
+    SQLiteDatabase articlesDB;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        articlesDB = this.openOrCreateDatabase("Articles", MODE_PRIVATE, null);
+
+        articlesDB.execSQL("CREATE TABLE IF NOT EXISTS articles (id INTEGER PRIMARY KEY, articleId INTEGER, url VARCHAR, title VARCHAR, content VARCHAR)");
+
         DownloadTask task = new DownloadTask();
 
         try {
+
+            articlesDB.execSQL("DELETE FROM articles");
 
             String result = task.execute("https://hacker-news.firebaseio.com/v0/topstories.json?print=pretty").get();
 
@@ -58,9 +68,34 @@ public class MainActivity extends AppCompatActivity {
                 articleTitles.put(Integer.valueOf(articleId),articleTitle);
                 articleURLs.put(Integer.valueOf(articleId),articleURL);
 
+                String sql = "INSERT INTO articles (articleId, url, title) VALUES (? , ? , ? )";
+
+                SQLiteStatement statement = articlesDB.compileStatement(sql);
+
+                statement.bindString(1,articleId);
+                statement.bindString(2,articleURL);
+                statement.bindString(3,articleTitle);
+
+                statement.execute();
             }
 
-            Log.i("article titles", articleTitles.toString());
+            Cursor c = articlesDB.rawQuery("SELECT * FROM articles",null);
+
+            int articleIdIndex = c.getColumnIndex("articleId");
+            int urlIndex = c.getColumnIndex("url");
+            int titleIndex = c.getColumnIndex("title");
+
+            c.moveToFirst();
+
+            while(c != null){
+
+                Log.i("articleId",Integer.toString(c.getInt(articleIdIndex)));
+                Log.i("articleTitle",c.getString(titleIndex));
+
+                c.moveToNext();
+
+            }
+
 
         } catch (Exception e) {
             e.printStackTrace();
