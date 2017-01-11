@@ -8,6 +8,8 @@ import android.os.StrictMode;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -31,10 +33,17 @@ public class MainActivity extends AppCompatActivity {
 
     SQLiteDatabase articlesDB;
 
+    ArrayList<String> titles = new ArrayList<String>();
+    ArrayAdapter arrayAdapter;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        ListView listView = (ListView) findViewById(R.id.listView);
+        arrayAdapter = new ArrayAdapter(this,android.R.layout.simple_list_item_1,titles);
+        listView.setAdapter(arrayAdapter);
 
         articlesDB = this.openOrCreateDatabase("Articles", MODE_PRIVATE, null);
 
@@ -79,15 +88,18 @@ public class MainActivity extends AppCompatActivity {
                 statement.execute();
             }
 
-            Cursor c = articlesDB.rawQuery("SELECT * FROM articles",null);
+            Cursor c = articlesDB.rawQuery("SELECT * FROM articles ORDER BY articleId DESC",null);
 
             int articleIdIndex = c.getColumnIndex("articleId");
             int urlIndex = c.getColumnIndex("url");
             int titleIndex = c.getColumnIndex("title");
 
             c.moveToFirst();
+            titles.clear();
 
             while(c != null){
+
+                titles.add(c.getString(titleIndex));
 
                 Log.i("articleId",Integer.toString(c.getInt(articleIdIndex)));
                 Log.i("articleTitle",c.getString(titleIndex));
@@ -95,6 +107,8 @@ public class MainActivity extends AppCompatActivity {
                 c.moveToNext();
 
             }
+
+            arrayAdapter.notifyDataSetChanged();
 
 
         } catch (Exception e) {
