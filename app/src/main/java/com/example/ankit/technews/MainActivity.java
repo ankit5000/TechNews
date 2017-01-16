@@ -41,6 +41,8 @@ public class MainActivity extends AppCompatActivity {
 
     ArrayList<String> urls = new ArrayList<String>();
 
+    ArrayList<String> content = new ArrayList<String>();
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,59 +61,40 @@ public class MainActivity extends AppCompatActivity {
 
                 i.putExtra("articleURL",urls.get(position));
 
+                i.putExtra("content", content.get(position));
+
                 startActivity(i);
             }
         });
-
-
 
 
         articlesDB = this.openOrCreateDatabase("Articles", MODE_PRIVATE, null);
 
         articlesDB.execSQL("CREATE TABLE IF NOT EXISTS articles (id INTEGER PRIMARY KEY, articleId INTEGER, url VARCHAR, title VARCHAR, content VARCHAR)");
 
+        updateListView();
+
+
         DownloadTask task = new DownloadTask();
 
         try {
 
-            articlesDB.execSQL("DELETE FROM articles");
+            task.execute("https://hacker-news.firebaseio.com/v0/topstories.json?print=pretty");
 
-            String result = task.execute("https://hacker-news.firebaseio.com/v0/topstories.json?print=pretty").get();
+            updateListView();
 
-            JSONArray jsonArray = new JSONArray(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
-            for(int i=0; i<12; i++){
+    public void updateListView(){
 
-                String articleId = jsonArray.getString(i);
+        try {
 
-                DownloadTask getArticle = new DownloadTask();
+            Cursor c = articlesDB.rawQuery("SELECT * FROM articles ORDER BY articleId DESC", null);
 
-                String articleInfo = getArticle.execute("https://hacker-news.firebaseio.com/v0/item/" + articleId + ".json?print=pretty").get();
-
-                JSONObject jsonObject = new JSONObject(articleInfo);
-
-                String articleTitle = jsonObject.getString("title");
-
-                String articleURL = jsonObject.getString("url");
-
-                articleIds.add(Integer.valueOf(articleId));
-                articleTitles.put(Integer.valueOf(articleId),articleTitle);
-                articleURLs.put(Integer.valueOf(articleId),articleURL);
-
-                String sql = "INSERT INTO articles (articleId, url, title) VALUES (? , ? , ? )";
-
-                SQLiteStatement statement = articlesDB.compileStatement(sql);
-
-                statement.bindString(1,articleId);
-                statement.bindString(2,articleURL);
-                statement.bindString(3,articleTitle);
-
-                statement.execute();
-            }
-
-            Cursor c = articlesDB.rawQuery("SELECT * FROM articles ORDER BY articleId DESC",null);
-
-            int articleIdIndex = c.getColumnIndex("articleId");
+            int contentIndex = c.getColumnIndex("content");
             int urlIndex = c.getColumnIndex("url");
             int titleIndex = c.getColumnIndex("title");
 
@@ -119,21 +102,23 @@ public class MainActivity extends AppCompatActivity {
             titles.clear();
             urls.clear();
 
-            while(c != null){
+            while (c != null) {
 
                 titles.add(c.getString(titleIndex));
                 urls.add(c.getString(urlIndex));
+                content.add(c.getString(contentIndex));
 
                 c.moveToNext();
 
             }
 
             arrayAdapter.notifyDataSetChanged();
+        }catch (Exception e){
 
-
-        } catch (Exception e) {
             e.printStackTrace();
+
         }
+
     }
 
     public class DownloadTask extends AsyncTask<String,Void,String>{
@@ -169,6 +154,85 @@ public class MainActivity extends AppCompatActivity {
 
                 }
 
+                articlesDB.execSQL("DELETE FROM articles");
+
+                JSONArray jsonArray = new JSONArray(result);
+
+                for(int i=0; i<12; i++) {
+
+                    String articleId = jsonArray.getString(i);
+
+                    url = new URL("https://hacker-news.firebaseio.com/v0/item/" + articleId + ".json?print=pretty");
+
+                    urlConnection = (HttpURLConnection) url.openConnection();
+
+                    in = urlConnection.getInputStream();
+
+                    reader = new InputStreamReader(in);
+
+                    data = reader.read();
+
+                    String articleInfo = "";
+
+                    while (data != -1) {
+
+                        char current = (char) data;
+
+                        articleInfo += current;
+
+                        data = reader.read();
+
+                    }
+
+                    JSONObject jsonObject = new JSONObject(articleInfo);
+
+                    String articleTitle = jsonObject.getString("title");
+
+                    String articleURL = jsonObject.getString("url");
+
+                    String articleContent = "";
+
+                    /*
+
+                    url = new URL(articleURL);
+
+                    urlConnection = (HttpURLConnection) url.openConnection();
+
+                    in = urlConnection.getInputStream();
+
+                    reader = new InputStreamReader(in);
+
+                    data = reader.read();
+
+
+
+                    while (data != -1) {
+
+                        char current = (char) data;
+
+                        articleInfo += current;
+
+                        data = reader.read();
+
+                    } */
+
+
+                    articleIds.add(Integer.valueOf(articleId));
+                    articleTitles.put(Integer.valueOf(articleId), articleTitle);
+                    articleURLs.put(Integer.valueOf(articleId), articleURL);
+
+                    String sql = "INSERT INTO articles (articleId, url, title, content) VALUES (? , ? , ? , ?)";
+
+                    SQLiteStatement statement = articlesDB.compileStatement(sql);
+
+                    statement.bindString(1, articleId);
+                    statement.bindString(2, articleURL);
+                    statement.bindString(3, articleTitle);
+                    statement.bindString(4, articleContent);
+
+                    statement.execute();
+
+                }
 
             }catch (Exception e){
 
@@ -177,6 +241,13 @@ public class MainActivity extends AppCompatActivity {
             }
 
             return  result;
+        }
+
+        @Override
+        protected void onPostExecute(String s) {
+
+            updateListView();
+
         }
     }
 }
