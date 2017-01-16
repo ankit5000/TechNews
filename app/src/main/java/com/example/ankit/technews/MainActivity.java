@@ -1,5 +1,6 @@
 package com.example.ankit.technews;
 
+import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteStatement;
@@ -8,6 +9,8 @@ import android.os.StrictMode;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
@@ -36,6 +39,9 @@ public class MainActivity extends AppCompatActivity {
     ArrayList<String> titles = new ArrayList<String>();
     ArrayAdapter arrayAdapter;
 
+    ArrayList<String> urls = new ArrayList<String>();
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -44,6 +50,21 @@ public class MainActivity extends AppCompatActivity {
         ListView listView = (ListView) findViewById(R.id.listView);
         arrayAdapter = new ArrayAdapter(this,android.R.layout.simple_list_item_1,titles);
         listView.setAdapter(arrayAdapter);
+
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+
+                Intent i = new Intent(getApplicationContext(),ArticleActivity.class);
+
+                i.putExtra("articleURL",urls.get(position));
+
+                startActivity(i);
+            }
+        });
+
+
+
 
         articlesDB = this.openOrCreateDatabase("Articles", MODE_PRIVATE, null);
 
@@ -96,13 +117,12 @@ public class MainActivity extends AppCompatActivity {
 
             c.moveToFirst();
             titles.clear();
+            urls.clear();
 
             while(c != null){
 
                 titles.add(c.getString(titleIndex));
-
-                Log.i("articleId",Integer.toString(c.getInt(articleIdIndex)));
-                Log.i("articleTitle",c.getString(titleIndex));
+                urls.add(c.getString(urlIndex));
 
                 c.moveToNext();
 

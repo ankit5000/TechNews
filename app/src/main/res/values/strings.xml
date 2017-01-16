@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">TechNews</string>
+    <string name="title_activity_article">Your News</string>
 </resources>
